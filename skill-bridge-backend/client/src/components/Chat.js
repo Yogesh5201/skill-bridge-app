@@ -1,8 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react'; // Added useRef for auto-scroll
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import API from '../api';
 
-// socket is passed as a prop from App.js to keep connection alive
 function Chat({ socket, user }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -11,9 +9,7 @@ function Chat({ socket, user }) {
   const [currentMessage, setCurrentMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
   
-  // Ref for auto-scrolling to bottom
   const scrollRef = useRef(null);
-
   const room = connectionId;
 
   useEffect(() => {
@@ -23,20 +19,15 @@ function Chat({ socket, user }) {
   }, [room, socket]);
 
   useEffect(() => {
-    // Listen for incoming messages
     const handleMessageReceive = (data) => {
       setMessageList((list) => [...list, data]);
     };
-
     socket.on("receive_message", handleMessageReceive);
-
-    // Cleanup listener to prevent double messages
     return () => {
       socket.off("receive_message", handleMessageReceive);
     };
   }, [socket]);
 
-  // Auto-scroll to bottom whenever messageList changes
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messageList]);
@@ -47,18 +38,15 @@ function Chat({ socket, user }) {
         room: room,
         author: user.username,
         message: currentMessage,
-        time: new Date(Date.now()).getHours() + ":" + new Date(Date.now()).getMinutes(),
+        time: new Date(Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       await socket.emit("send_message", messageData);
       setMessageList((list) => [...list, messageData]);
-      
-      // --- FIX 2: CLEAR INPUT AFTER SENDING ---
       setCurrentMessage(""); 
     }
   };
 
-  // Allow sending with "Enter" key
   const handleKeyPress = (event) => {
     if (event.key === 'Enter') {
       sendMessage();
@@ -66,93 +54,189 @@ function Chat({ socket, user }) {
   };
 
   const startVideoCall = () => {
-    // Generate a random room ID for the video call
     const videoRoomId = `video-${room}-${Date.now()}`;
-    // Send a special message with the link
     const linkMsg = {
         room: room,
         author: user.username,
         message: "📞 Started a Video Call",
-        type: "call_invite", // Custom type to style it differently
+        type: "call_invite", 
         callLink: `/video/${videoRoomId}` 
     };
     
     socket.emit("send_message", linkMsg);
     setMessageList((list) => [...list, linkMsg]);
-    
-    // Redirect myself to the video room
     navigate(`/video/${videoRoomId}`);
   };
 
   return (
-    <div className="chat-window" style={{ display: 'flex', flexDirection: 'column', height: '90vh', maxWidth: '800px', margin: '20px auto', background: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+    <div className="chat-window" style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: '85vh', 
+      maxWidth: '600px', 
+      margin: '20px auto', 
+      background: '#f0f2f5', // WhatsApp-like light grey bg
+      borderRadius: '16px', 
+      boxShadow: '0 10px 30px rgba(0,0,0,0.1)', 
+      overflow: 'hidden',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+    }}>
       
-      {/* --- HEADER (Fixed at Top) --- */}
-      <div className="chat-header" style={{ padding: '15px 20px', background: '#4f46e5', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Chat with {partnerName || "Partner"}</h3>
-          <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>Online</span>
+      {/* --- HEADER --- */}
+      <div style={{ 
+        padding: '15px 20px', 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+        color: 'white', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+        zIndex: 10,
+        flexShrink: 0
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Avatar Circle */}
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+                👤
+            </div>
+            <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{partnerName || "Chat"}</h3>
+                <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>Online</span>
+            </div>
         </div>
+
         <button 
           onClick={startVideoCall}
-          className="btn"
-          style={{ background: 'white', color: '#4f46e5', border: 'none', padding: '8px 15px', borderRadius: '20px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+          style={{ 
+            background: 'rgba(255,255,255,0.2)', 
+            color: 'white', 
+            border: '1px solid rgba(255,255,255,0.3)', 
+            padding: '8px 16px', 
+            borderRadius: '20px', 
+            cursor: 'pointer', 
+            fontSize: '0.9rem',
+            transition: '0.2s'
+          }}
+          onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.3)'}
+          onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
         >
           📹 Video Call
         </button>
       </div>
 
-      {/* --- BODY (Scrollable Middle) --- */}
-      {/* flex: 1 makes this take up all available space, pushing input to bottom */}
-      <div className="chat-body" style={{ flex: 1, padding: '20px', overflowY: 'auto', background: '#f9fafb', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {/* --- BODY --- */}
+      <div style={{ 
+        flex: 1, 
+        padding: '20px', 
+        overflowY: 'auto', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '12px' 
+      }}>
         {messageList.map((msg, index) => {
            const isMe = msg.author === user.username;
            return (
-             <div key={index} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+             <div key={index} style={{ 
+               display: 'flex', 
+               justifyContent: isMe ? 'flex-end' : 'flex-start' 
+             }}>
                <div style={{ 
                  maxWidth: '70%', 
-                 padding: '12px 16px', 
-                 borderRadius: '18px', 
-                 background: isMe ? '#4f46e5' : '#e5e7eb', 
-                 color: isMe ? 'white' : 'black',
-                 borderBottomRightRadius: isMe ? '4px' : '18px',
-                 borderBottomLeftRadius: isMe ? '18px' : '4px',
-                 position: 'relative'
+                 padding: '10px 14px', 
+                 borderRadius: '16px', 
+                 // My messages = Purple gradient, Others = White
+                 background: isMe ? '#764ba2' : 'white', 
+                 color: isMe ? 'white' : '#333',
+                 borderBottomRightRadius: isMe ? '2px' : '16px',
+                 borderBottomLeftRadius: isMe ? '16px' : '2px',
+                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                 display: 'flex',
+                 flexDirection: 'column',
+                 minWidth: '80px' // Ensures small messages aren't too thin
                }}>
-                 {/* Special Styling for Call Links */}
+                 {/* Message Content */}
                  {msg.type === 'call_invite' ? (
-                    <div>
-                        <p style={{margin: '0 0 5px 0', fontWeight: 'bold'}}>📞 Incoming Call</p>
+                    <div style={{ textAlign: 'center' }}>
+                        <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>📞 Incoming Video Call</p>
                         <button 
                             onClick={() => navigate(msg.callLink)}
-                            style={{background: isMe ? 'white' : '#4f46e5', color: isMe ? '#4f46e5' : 'white', border:'none', padding:'5px 10px', borderRadius:'5px', cursor:'pointer'}}
+                            style={{ 
+                                background: 'white', 
+                                color: '#764ba2', 
+                                border: 'none', 
+                                padding: '6px 12px', 
+                                borderRadius: '12px', 
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: '0.8rem'
+                            }}
                         >
-                            Join Call
+                            Join Now
                         </button>
                     </div>
                  ) : (
-                    <p style={{ margin: 0 }}>{msg.message}</p>
+                    <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.4' }}>{msg.message}</p>
                  )}
-                 <span style={{ fontSize: '0.65rem', opacity: 0.7, marginTop: '4px', display: 'block', textAlign: 'right' }}>{msg.time}</span>
+
+                 {/* Timestamp (Right Aligned) */}
+                 <span style={{ 
+                     fontSize: '0.65rem', 
+                     opacity: 0.7, 
+                     alignSelf: 'flex-end', 
+                     marginTop: '4px' 
+                 }}>
+                    {msg.time}
+                 </span>
                </div>
              </div>
            );
         })}
-        {/* Invisible div to scroll to */}
         <div ref={scrollRef} />
       </div>
 
-      {/* --- FOOTER (Fixed at Bottom) --- */}
-      <div className="chat-footer" style={{ padding: '15px', borderTop: '1px solid #e5e7eb', background: 'white', display: 'flex', gap: '10px', flexShrink: 0 }}>
+      {/* --- FOOTER --- */}
+      <div style={{ 
+        padding: '15px', 
+        background: 'white', 
+        borderTop: '1px solid #e0e0e0', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '10px',
+        flexShrink: 0
+      }}>
         <input
           type="text"
           value={currentMessage}
           placeholder="Type a message..."
           onChange={(event) => setCurrentMessage(event.target.value)}
           onKeyPress={handleKeyPress}
-          style={{ flex: 1, padding: '12px', borderRadius: '25px', border: '1px solid #d1d5db', outline: 'none' }}
+          style={{ 
+            flex: 1, 
+            padding: '12px 15px', 
+            borderRadius: '25px', 
+            border: '1px solid #ddd', 
+            outline: 'none',
+            fontSize: '0.95rem',
+            background: '#f9f9f9'
+          }}
         />
-        <button onClick={sendMessage} style={{ background: '#4f46e5', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button 
+            onClick={sendMessage} 
+            style={{ 
+                background: '#764ba2', 
+                color: 'white', 
+                border: 'none', 
+                width: '45px', 
+                height: '45px', 
+                borderRadius: '50%', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '1.2rem',
+                boxShadow: '0 2px 5px rgba(118, 75, 162, 0.4)'
+            }}
+        >
           ➤
         </button>
       </div>
