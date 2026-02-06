@@ -1,47 +1,55 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
+import API from '../api';
+import { useNavigate, Link } from 'react-router-dom';
 
 function Login({ setUser }) {
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', form);
-      setUser(res.data.user);
-      navigate('/dashboard'); 
+      const { data } = await API.post('/auth/login', formData);
+      alert("Login Successful!");
+      setUser(data);
+      navigate('/dashboard');
     } catch (err) {
-      alert("Login Failed: " + (err.response?.data || "Invalid credentials"));
+      console.error(err);
+      let message = "Login Failed";
+      if (err.response && err.response.data && err.response.data.message) {
+        message = err.response.data.message;
+      }
+      alert(`Error: ${message}`);
     }
   };
 
   return (
-    <div className="auth-form">
-      <h2>Welcome Back 👋</h2>
-      <p style={{ color: '#6b7280', marginTop: 0 }}>Login to continue</p>
-      
-      <form onSubmit={handleSubmit}>
-        <input 
-          placeholder="Email" 
-          type="email"
-          onChange={e => setForm({...form, email: e.target.value})} 
-          required 
-        />
-        <input 
-          placeholder="Password" 
-          type="password"
-          onChange={e => setForm({...form, password: e.target.value})} 
-          required 
-        />
+    <div className="auth-container">
+      <div className="auth-box">
+        <h2>Welcome Back 👋</h2>
+        <p style={{marginBottom: '20px', color: '#666'}}>Login to continue</p>
         
-        <button type="submit">Login</button>
-      </form>
-
-      <p style={{ marginTop: '20px', fontSize: '0.9rem' }}>
-        New here? <Link to="/register" style={{ color: '#4f46e5', fontWeight: 'bold' }}>Create an account</Link>
-      </p>
+        <form onSubmit={handleSubmit}>
+          <input 
+            placeholder="Email" 
+            type="email" 
+            required
+            onChange={e => setFormData({...formData, email: e.target.value})} 
+          />
+          <input 
+            placeholder="Password" 
+            type="password" 
+            required
+            onChange={e => setFormData({...formData, password: e.target.value})} 
+          />
+          
+          <button type="submit" className="btn-primary">Login</button>
+        </form>
+        
+        <p style={{marginTop:'20px'}}>
+          New here? <Link to="/register">Create an account</Link>
+        </p>
+      </div>
     </div>
   );
 }

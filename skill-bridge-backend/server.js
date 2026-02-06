@@ -12,27 +12,13 @@ const sessionRoutes = require('./routes/session');
 const app = express();
 const server = http.createServer(app);
 
-// --- CORS CONFIGURATION ---
-// This function allows your localhost AND your Vercel app
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Allow Localhost
-    if (origin.indexOf('localhost') !== -1) return callback(null, true);
-    
-    // Allow YOUR Vercel App (Checks if "skill-bridge" and "vercel.app" are in the link)
-    if (origin.indexOf('skill-bridge') !== -1 && origin.indexOf('vercel.app') !== -1) {
-      return callback(null, true);
-    }
-    
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true
-};
+// --- CORS: ALLOW EVERYONE (CRITICAL FIX) ---
+// This tells the browser: "It is okay to talk to this server from ANY website"
+app.use(cors({
+  origin: true,       // Allow any origin
+  credentials: true   // Allow cookies/headers
+}));
 
-app.use(cors(corsOptions));
 app.use(express.json());
 
 // --- DATABASE ---
@@ -50,15 +36,16 @@ app.use('/api/sessions', sessionRoutes);
 
 // --- SOCKET.IO ---
 const io = new Server(server, {
-  cors: corsOptions // Use the same flexible CORS rules
+  cors: {
+    origin: "*",      // Allow all socket connections
+    methods: ["GET", "POST"]
+  }
 });
 
 io.on("connection", (socket) => {
   console.log(`User Connected: ${socket.id}`);
 
-  socket.on("join_room", (room) => {
-    socket.join(room);
-  });
+  socket.on("join_room", (room) => { socket.join(room); });
 
   socket.on("send_message", (data) => {
     socket.to(data.room).emit("receive_message", data);
@@ -69,10 +56,6 @@ io.on("connection", (socket) => {
       senderName: data.senderName,
       message: "New session request!"
     });
-  });
-
-  socket.on("disconnect", () => {
-    console.log("User Disconnected", socket.id);
   });
 });
 

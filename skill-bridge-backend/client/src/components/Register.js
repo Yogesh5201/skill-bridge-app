@@ -8,6 +8,8 @@ function Register({ setUser }) {
     email: '', 
     password: '', 
     role: 'Learner', 
+    gender: 'Male',    // New Field
+    category: 'Tech',  // New Field
     skills: '', 
     interests: ''
   });
@@ -16,7 +18,6 @@ function Register({ setUser }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Data preparation
       const dataToSend = {
         ...formData,
         skills: formData.skills.split(',').map(s => s.trim()),
@@ -30,20 +31,15 @@ function Register({ setUser }) {
       navigate('/dashboard');
       
     } catch (err) {
-      console.error("Full Register Error:", err);
-      
-      // --- DEBUGGING FIX ---
-      // This forces the hidden object to become readable text
-      let debugMessage = "Network Error";
-      
-      if (err.response && err.response.data) {
-         // If the backend sent a message, show the RAW JSON structure
-         debugMessage = JSON.stringify(err.response.data);
+      console.error(err);
+      // Enhanced Error Handling
+      let message = "Registration Failed";
+      if (err.response && err.response.data && err.response.data.message) {
+        message = err.response.data.message;
       } else if (err.message) {
-         debugMessage = err.message;
+        message = err.message;
       }
-
-      alert(`Debug Error: ${debugMessage}`);
+      alert(`Error: ${message}`);
     }
   };
 
@@ -70,6 +66,30 @@ function Register({ setUser }) {
             onChange={e => setFormData({...formData, password: e.target.value})} 
           />
           
+          {/* --- NEW FIELDS: GENDER & CATEGORY --- */}
+          <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
+            <select 
+              style={{flex: 1, padding: '10px'}}
+              value={formData.gender} 
+              onChange={e => setFormData({...formData, gender: e.target.value})}
+            >
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+
+            <select 
+              style={{flex: 1, padding: '10px'}}
+              value={formData.category} 
+              onChange={e => setFormData({...formData, category: e.target.value})}
+            >
+              <option value="Tech">Tech</option>
+              <option value="Art">Art</option>
+              <option value="Music">Music</option>
+              <option value="Lifestyle">Lifestyle</option>
+            </select>
+          </div>
+
           <div style={{textAlign:'left', margin:'10px 0', fontSize:'0.9rem', color:'#666'}}>
             <label>I want to:</label>
             <select 
