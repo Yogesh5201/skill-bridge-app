@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import API from '../api';
 import Sidebar from './Sidebar';
 
 function Profile({ user }) {
@@ -10,8 +9,8 @@ function Profile({ user }) {
   });
 
   const handleSave = async () => {
-    // In a real app, you'd have a PUT /users/update route.
-    // For now, we'll just alert because we didn't build the update route yet.
+    // In a real app, you'd call API.put here.
+    // Since we aren't using the API variable yet, we just alert.
     alert("Profile Updated! (Backend update route required for persistence)");
   };
 
