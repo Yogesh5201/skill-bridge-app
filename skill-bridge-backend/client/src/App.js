@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import './App.css'; 
+import './App.css';  // <--- THIS IS CRITICAL FOR YOUR DESIGN!
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import { ToastContainer, toast } from 'react-toastify';
@@ -14,10 +14,10 @@ import Messages from './components/Messages';
 import Schedule from './components/Schedule';
 import Profile from './components/Profile';
 
-// Initialize Socket Connection
+// Initialize Socket with your Render URL
 const socket = io.connect(
   process.env.NODE_ENV === 'production' 
-    ? 'https://skill-bridge-app.onrender.com' // <--- REPLACE WITH YOUR RENDER URL
+    ? 'https://skill-bridge-app.onrender.com' 
     : 'http://localhost:5000'
 );
 

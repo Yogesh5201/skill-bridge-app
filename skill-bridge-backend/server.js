@@ -12,21 +12,30 @@ const sessionRoutes = require('./routes/session');
 const app = express();
 const server = http.createServer(app);
 
-// --- CORS CONFIGURATION (CRITICAL) ---
-// Add your Vercel URL to this list
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://skill-bridge-app.vercel.app" // <--- REPLACE WITH YOUR VERCEL URL
-];
-
-app.use(cors({
-  origin: allowedOrigins,
+// --- CORS CONFIGURATION ---
+// This function allows your localhost AND your Vercel app
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow Localhost
+    if (origin.indexOf('localhost') !== -1) return callback(null, true);
+    
+    // Allow YOUR Vercel App (Checks if "skill-bridge" and "vercel.app" are in the link)
+    if (origin.indexOf('skill-bridge') !== -1 && origin.indexOf('vercel.app') !== -1) {
+      return callback(null, true);
+    }
+    
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
-}));
+};
 
+app.use(cors(corsOptions));
 app.use(express.json());
 
-// --- DATABASE CONNECTION ---
+// --- DATABASE ---
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -41,10 +50,7 @@ app.use('/api/sessions', sessionRoutes);
 
 // --- SOCKET.IO ---
 const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins, // Use the same allowed origins list
-    methods: ["GET", "POST"]
-  }
+  cors: corsOptions // Use the same flexible CORS rules
 });
 
 io.on("connection", (socket) => {
@@ -52,7 +58,6 @@ io.on("connection", (socket) => {
 
   socket.on("join_room", (room) => {
     socket.join(room);
-    console.log(`User with ID: ${socket.id} joined room: ${room}`);
   });
 
   socket.on("send_message", (data) => {
@@ -60,7 +65,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("send_session_request", (data) => {
-    // Notify the specific user (receiverId)
     io.to(data.receiverId).emit("session_notification", {
       senderName: data.senderName,
       message: "New session request!"
@@ -72,7 +76,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// --- SERVER START ---
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
