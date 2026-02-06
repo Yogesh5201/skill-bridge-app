@@ -72,20 +72,24 @@ function Chat({ socket, user }) {
     <div className="chat-window" style={{ 
       display: 'flex', 
       flexDirection: 'column', 
-      height: '85vh', 
-      maxWidth: '600px', 
-      margin: '20px auto', 
-      background: '#f0f2f5', // WhatsApp-like light grey bg
-      borderRadius: '16px', 
-      boxShadow: '0 10px 30px rgba(0,0,0,0.1)', 
+      height: '100vh',         // <--- FULL SCREEN HEIGHT
+      width: '100%',           // <--- FULL SCREEN WIDTH
+      maxWidth: '100%',        // <--- No width restriction
+      margin: '0',             // <--- No margins
+      background: '#e5ddd5',   // WhatsApp classic background color
+      borderRadius: '0',       // <--- No rounded corners
       overflow: 'hidden',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+      position: 'fixed',       // <--- Forces it to stay on top of everything
+      top: 0,
+      left: 0,
+      zIndex: 9999
     }}>
       
       {/* --- HEADER --- */}
       <div style={{ 
         padding: '15px 20px', 
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+        background: '#075e54', // WhatsApp Green Header
         color: 'white', 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -94,13 +98,21 @@ function Chat({ socket, user }) {
         zIndex: 10,
         flexShrink: 0
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            {/* Back Button */}
+            <button 
+                onClick={() => navigate('/dashboard')}
+                style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', padding: '0 5px' }}
+            >
+                ←
+            </button>
+            
             {/* Avatar Circle */}
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
                 👤
             </div>
             <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{partnerName || "Chat"}</h3>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '500' }}>{partnerName || "Chat"}</h3>
                 <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>Online</span>
             </div>
         </div>
@@ -108,19 +120,16 @@ function Chat({ socket, user }) {
         <button 
           onClick={startVideoCall}
           style={{ 
-            background: 'rgba(255,255,255,0.2)', 
+            background: 'none', 
             color: 'white', 
-            border: '1px solid rgba(255,255,255,0.3)', 
-            padding: '8px 16px', 
-            borderRadius: '20px', 
+            border: 'none', 
+            padding: '8px', 
             cursor: 'pointer', 
-            fontSize: '0.9rem',
-            transition: '0.2s'
+            fontSize: '1.2rem',
           }}
-          onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.3)'}
-          onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
+          title="Start Video Call"
         >
-          📹 Video Call
+          🎥
         </button>
       </div>
 
@@ -131,7 +140,11 @@ function Chat({ socket, user }) {
         overflowY: 'auto', 
         display: 'flex', 
         flexDirection: 'column', 
-        gap: '12px' 
+        gap: '8px',
+        // Optional: Add a subtle background pattern like WhatsApp
+        backgroundImage: 'linear-gradient(#e5ddd5 2px, transparent 2px), linear-gradient(90deg, #e5ddd5 2px, transparent 2px)',
+        backgroundSize: '20px 20px',
+        backgroundBlendMode: 'soft-light'
       }}>
         {messageList.map((msg, index) => {
            const isMe = msg.author === user.username;
@@ -141,18 +154,17 @@ function Chat({ socket, user }) {
                justifyContent: isMe ? 'flex-end' : 'flex-start' 
              }}>
                <div style={{ 
-                 maxWidth: '70%', 
-                 padding: '10px 14px', 
-                 borderRadius: '16px', 
-                 // My messages = Purple gradient, Others = White
-                 background: isMe ? '#764ba2' : 'white', 
-                 color: isMe ? 'white' : '#333',
-                 borderBottomRightRadius: isMe ? '2px' : '16px',
-                 borderBottomLeftRadius: isMe ? '16px' : '2px',
-                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                 maxWidth: '75%', 
+                 padding: '8px 12px', 
+                 borderRadius: '8px', 
+                 // WhatsApp Colors: Green for me, White for them
+                 background: isMe ? '#dcf8c6' : 'white', 
+                 color: 'black',
+                 boxShadow: '0 1px 1px rgba(0,0,0,0.1)',
                  display: 'flex',
                  flexDirection: 'column',
-                 minWidth: '80px' // Ensures small messages aren't too thin
+                 minWidth: '80px',
+                 position: 'relative'
                }}>
                  {/* Message Content */}
                  {msg.type === 'call_invite' ? (
@@ -161,29 +173,29 @@ function Chat({ socket, user }) {
                         <button 
                             onClick={() => navigate(msg.callLink)}
                             style={{ 
-                                background: 'white', 
-                                color: '#764ba2', 
+                                background: '#075e54', 
+                                color: 'white', 
                                 border: 'none', 
-                                padding: '6px 12px', 
-                                borderRadius: '12px', 
+                                padding: '8px 16px', 
+                                borderRadius: '20px', 
                                 cursor: 'pointer',
                                 fontWeight: 'bold',
-                                fontSize: '0.8rem'
+                                fontSize: '0.9rem'
                             }}
                         >
-                            Join Now
+                            Join Call
                         </button>
                     </div>
                  ) : (
-                    <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.4' }}>{msg.message}</p>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '0.95rem', lineHeight: '1.4' }}>{msg.message}</p>
                  )}
 
-                 {/* Timestamp (Right Aligned) */}
+                 {/* Timestamp */}
                  <span style={{ 
                      fontSize: '0.65rem', 
-                     opacity: 0.7, 
+                     color: '#999',
                      alignSelf: 'flex-end', 
-                     marginTop: '4px' 
+                     marginTop: '2px' 
                  }}>
                     {msg.time}
                  </span>
@@ -196,9 +208,8 @@ function Chat({ socket, user }) {
 
       {/* --- FOOTER --- */}
       <div style={{ 
-        padding: '15px', 
-        background: 'white', 
-        borderTop: '1px solid #e0e0e0', 
+        padding: '10px 15px', 
+        background: '#f0f0f0', 
         display: 'flex', 
         alignItems: 'center', 
         gap: '10px',
@@ -207,23 +218,24 @@ function Chat({ socket, user }) {
         <input
           type="text"
           value={currentMessage}
-          placeholder="Type a message..."
+          placeholder="Type a message"
           onChange={(event) => setCurrentMessage(event.target.value)}
           onKeyPress={handleKeyPress}
           style={{ 
             flex: 1, 
-            padding: '12px 15px', 
+            padding: '12px 20px', 
             borderRadius: '25px', 
-            border: '1px solid #ddd', 
+            border: 'none', 
             outline: 'none',
-            fontSize: '0.95rem',
-            background: '#f9f9f9'
+            fontSize: '1rem',
+            background: 'white',
+            boxShadow: '0 1px 1px rgba(0,0,0,0.05)'
           }}
         />
         <button 
             onClick={sendMessage} 
             style={{ 
-                background: '#764ba2', 
+                background: '#075e54', 
                 color: 'white', 
                 border: 'none', 
                 width: '45px', 
@@ -234,7 +246,7 @@ function Chat({ socket, user }) {
                 alignItems: 'center', 
                 justifyContent: 'center',
                 fontSize: '1.2rem',
-                boxShadow: '0 2px 5px rgba(118, 75, 162, 0.4)'
+                boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
             }}
         >
           ➤
