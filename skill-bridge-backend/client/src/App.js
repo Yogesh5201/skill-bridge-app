@@ -17,7 +17,7 @@ import Profile from './components/Profile';
 // Uses the Render URL if live, or Localhost if testing
 const socket = io.connect(
   process.env.NODE_ENV === 'production' 
-    ? 'https://skillbridge-backend.onrender.com' 
+    ? 'https://skill-bridge-app.onrender.com' 
     : 'http://localhost:5000'
 );
 
