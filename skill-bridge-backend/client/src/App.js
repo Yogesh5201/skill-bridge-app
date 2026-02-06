@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import './App.css';  // <--- THIS IS CRITICAL FOR YOUR DESIGN!
+import './App.css'; 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import { ToastContainer, toast } from 'react-toastify';
@@ -13,6 +13,7 @@ import Chat from './components/Chat';
 import Messages from './components/Messages';
 import Schedule from './components/Schedule';
 import Profile from './components/Profile';
+import VideoRoom from './components/VideoRoom'; // <--- NEW IMPORT
 
 // Initialize Socket with your Render URL
 const socket = io.connect(
@@ -38,7 +39,7 @@ function App() {
       };
 
       const handleSession = (data) => {
-         toast.success(`📅 New Session Request from ${data.senderName}!`);
+          toast.success(`📅 New Session Request from ${data.senderName}!`);
       };
 
       socket.on("receive_message", handleChat);
@@ -71,6 +72,9 @@ function App() {
           <Route path="/schedule" element={user ? <Schedule user={user} /> : <Navigate to="/" />} />
           <Route path="/profile" element={user ? <Profile user={user} /> : <Navigate to="/" />} />
           <Route path="/chat" element={user ? <Chat user={user} socket={socket} /> : <Navigate to="/" />} />
+          
+          {/* <--- NEW VIDEO ROUTE (Accessible to logged-in users) */}
+          <Route path="/video/:roomId" element={user ? <VideoRoom /> : <Navigate to="/" />} />
           
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
