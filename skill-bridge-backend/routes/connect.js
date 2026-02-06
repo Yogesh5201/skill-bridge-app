@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Connection = require('../models/Connection'); // Import the new model
 
-// GET /api/connect/:userId - Get ALL connections (requests sent & received)
+// GET /api/connect/:userId - Get ALL connections (sent & received)
 router.get('/:userId', async (req, res) => {
   try {
     const connections = await Connection.find({
@@ -11,8 +11,8 @@ router.get('/:userId', async (req, res) => {
         { recipient: req.params.userId }
       ]
     })
-    // POPULATE converts "ID" into actual "User Data" (username, etc.)
-    // This is CRITICAL for the dashboard to know who sent the request.
+    // CRITICAL: .populate() turns the ID into actual User Data (username, email)
+    // This allows the dashboard to show WHO sent the request.
     .populate('requester', 'username email role')
     .populate('recipient', 'username email role');
 
@@ -27,7 +27,7 @@ router.post('/request', async (req, res) => {
   try {
     const { requesterId, recipientId } = req.body;
 
-    // Check if connection already exists
+    // 1. Check if connection already exists
     const existing = await Connection.findOne({
       $or: [
         { requester: requesterId, recipient: recipientId },
@@ -39,6 +39,7 @@ router.post('/request', async (req, res) => {
       return res.status(400).json({ message: "Connection already exists" });
     }
 
+    // 2. Save new connection
     const newConnection = new Connection({
       requester: requesterId,
       recipient: recipientId,
