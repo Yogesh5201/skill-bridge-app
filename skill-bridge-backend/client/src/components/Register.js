@@ -7,19 +7,21 @@ function Register({ setUser }) {
     username: '', 
     email: '', 
     password: '', 
-    role: 'Learner', 
-    gender: 'Male',    // New Field
-    category: 'Tech',  // New Field
+    gender: 'Male',    
+    category: 'Tech',  
     skills: '', 
     interests: ''
+    // removed 'role' from here, backend will default it to "Member"
   });
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Create the data object to send
       const dataToSend = {
         ...formData,
+        role: "Member", // Hardcode role since we removed the dropdown
         skills: formData.skills.split(',').map(s => s.trim()),
         interests: formData.interests.split(',').map(s => s.trim())
       };
@@ -31,14 +33,20 @@ function Register({ setUser }) {
       navigate('/dashboard');
       
     } catch (err) {
-      console.error(err);
-      // Enhanced Error Handling
+      console.error("Register Error:", err);
+      
+      // Get the specific error message from the backend
       let message = "Registration Failed";
-      if (err.response && err.response.data && err.response.data.message) {
-        message = err.response.data.message;
+      if (err.response && err.response.data) {
+        // Mongoose validation errors often come in an 'errors' array or a 'msg' field
+        message = err.response.data.message || 
+                  err.response.data.error || 
+                  err.response.data.msg || 
+                  JSON.stringify(err.response.data);
       } else if (err.message) {
         message = err.message;
       }
+      
       alert(`Error: ${message}`);
     }
   };
@@ -60,13 +68,14 @@ function Register({ setUser }) {
             onChange={e => setFormData({...formData, email: e.target.value})} 
           />
           <input 
-            placeholder="Password" 
+            placeholder="Password (Min 6 chars)" 
             type="password" 
             required
+            minLength="6" 
             onChange={e => setFormData({...formData, password: e.target.value})} 
           />
           
-          {/* --- NEW FIELDS: GENDER & CATEGORY --- */}
+          {/* Gender & Category Row */}
           <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
             <select 
               style={{flex: 1, padding: '10px'}}
@@ -90,17 +99,7 @@ function Register({ setUser }) {
             </select>
           </div>
 
-          <div style={{textAlign:'left', margin:'10px 0', fontSize:'0.9rem', color:'#666'}}>
-            <label>I want to:</label>
-            <select 
-              style={{marginTop:'5px', width: '100%', padding: '10px'}}
-              value={formData.role} 
-              onChange={e => setFormData({...formData, role: e.target.value})}
-            >
-              <option value="Learner">Learn Skills</option>
-              <option value="Helper">Teach Skills</option>
-            </select>
-          </div>
+          {/* REMOVED "I want to" SECTION HERE */}
 
           <input 
             placeholder="Skills I have (e.g. Java, Math)" 
