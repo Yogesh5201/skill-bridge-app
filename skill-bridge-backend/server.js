@@ -12,20 +12,18 @@ const sessionRoutes = require('./routes/session');
 const app = express();
 const server = http.createServer(app);
 
-// --- CORS: ALLOW EVERYONE (CRITICAL FIX) ---
-// This tells the browser: "It is okay to talk to this server from ANY website"
+// --- CORS: ALLOW EVERYONE ---
 app.use(cors({
-  origin: true,       // Allow any origin
-  credentials: true   // Allow cookies/headers
+  origin: true,
+  credentials: true
 }));
 
 app.use(express.json());
 
-// --- DATABASE ---
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+// --- DATABASE CONNECTION (FIXED) ---
+// We removed the 'useNewUrlParser' and 'useUnifiedTopology' options
+// because they cause the crash in your logs.
+mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("✅ MongoDB Connected"))
 .catch(err => console.error("❌ MongoDB Error:", err));
 
@@ -37,7 +35,7 @@ app.use('/api/sessions', sessionRoutes);
 // --- SOCKET.IO ---
 const io = new Server(server, {
   cors: {
-    origin: "*",      // Allow all socket connections
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
