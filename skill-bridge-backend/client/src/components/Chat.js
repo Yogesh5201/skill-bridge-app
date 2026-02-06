@@ -1,86 +1,160 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react'; // Added useRef for auto-scroll
+import { useLocation, useNavigate } from 'react-router-dom';
 import API from '../api';
 
-function Chat({ user, socket }) {
+// socket is passed as a prop from App.js to keep connection alive
+function Chat({ socket, user }) {
   const location = useLocation();
-  const { connectionId, partnerName } = location.state || {};
-  const [msg, setMsg] = useState("");
-  const [chatHistory, setChatHistory] = useState([]);
-  const bottomRef = useRef(null);
+  const navigate = useNavigate();
+  const { partnerName, connectionId } = location.state || {};
+  
+  const [currentMessage, setCurrentMessage] = useState("");
+  const [messageList, setMessageList] = useState([]);
+  
+  // Ref for auto-scrolling to bottom
+  const scrollRef = useRef(null);
+
+  const room = connectionId;
 
   useEffect(() => {
-    if(!connectionId) return;
-    socket.emit("join_room", connectionId);
+    if (room) {
+      socket.emit("join_room", room);
+    }
+  }, [room, socket]);
+
+  useEffect(() => {
+    // Listen for incoming messages
+    const handleMessageReceive = (data) => {
+      setMessageList((list) => [...list, data]);
+    };
+
+    socket.on("receive_message", handleMessageReceive);
+
+    // Cleanup listener to prevent double messages
+    return () => {
+      socket.off("receive_message", handleMessageReceive);
+    };
+  }, [socket]);
+
+  // Auto-scroll to bottom whenever messageList changes
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messageList]);
+
+  const sendMessage = async () => {
+    if (currentMessage !== "") {
+      const messageData = {
+        room: room,
+        author: user.username,
+        message: currentMessage,
+        time: new Date(Date.now()).getHours() + ":" + new Date(Date.now()).getMinutes(),
+      };
+
+      await socket.emit("send_message", messageData);
+      setMessageList((list) => [...list, messageData]);
+      
+      // --- FIX 2: CLEAR INPUT AFTER SENDING ---
+      setCurrentMessage(""); 
+    }
+  };
+
+  // Allow sending with "Enter" key
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter') {
+      sendMessage();
+    }
+  };
+
+  const startVideoCall = () => {
+    // Generate a random room ID for the video call
+    const videoRoomId = `video-${room}-${Date.now()}`;
+    // Send a special message with the link
+    const linkMsg = {
+        room: room,
+        author: user.username,
+        message: "📞 Started a Video Call",
+        type: "call_invite", // Custom type to style it differently
+        callLink: `/video/${videoRoomId}` 
+    };
     
-    API.get(`/messages/${connectionId}`).then(res => {
-        const formatted = res.data.map(m => ({
-          author: m.sender.username,
-          message: m.text,
-          time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }));
-        setChatHistory(formatted);
-    });
-
-    const handleReceive = (data) => setChatHistory((prev) => [...prev, data]);
-    socket.on("receive_message", handleReceive);
-    return () => socket.off("receive_message", handleReceive);
-  }, [connectionId, socket]);
-
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory]);
-
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    if (!msg) return;
-    const messageData = { room: connectionId, author: user.username, message: msg, time: new Date().toLocaleTimeString() };
-    await socket.emit("send_message", messageData);
-    await API.post('/messages', { connectionId, sender: user._id, text: msg });
-    setChatHistory((prev) => [...prev, messageData]);
-    setMsg("");
+    socket.emit("send_message", linkMsg);
+    setMessageList((list) => [...list, linkMsg]);
+    
+    // Redirect myself to the video room
+    navigate(`/video/${videoRoomId}`);
   };
 
   return (
-    <div className="app-layout" style={{ justifyContent: 'center', padding: '40px', background: '#f3f4f6' }}>
-      <div className="chat-layout" style={{ width: '100%', maxWidth: '900px', height: '85vh' }}>
-        
-        {/* Header */}
-        <div className="chat-header">
-          <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-            <Link to="/dashboard" style={{textDecoration:'none', color:'#6b7280', fontSize:'1.2rem'}}>←</Link>
-            <div>
-               <div style={{fontWeight:'700', fontSize:'1.1rem'}}>{partnerName}</div>
-               <div style={{fontSize:'0.8rem', color:'#10b981'}}>● Online</div>
-            </div>
-          </div>
-          <button 
-             onClick={() => window.open(`https://meet.jit.si/skillbridge-${connectionId}`, '_blank')}
-             style={{background:'#ef4444', color:'white', border:'none', padding:'8px 16px', borderRadius:'6px', cursor:'pointer', fontWeight:'600'}}>
-             🎥 Video Call
-          </button>
+    <div className="chat-window" style={{ display: 'flex', flexDirection: 'column', height: '90vh', maxWidth: '800px', margin: '20px auto', background: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+      
+      {/* --- HEADER (Fixed at Top) --- */}
+      <div className="chat-header" style={{ padding: '15px 20px', background: '#4f46e5', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Chat with {partnerName || "Partner"}</h3>
+          <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>Online</span>
         </div>
+        <button 
+          onClick={startVideoCall}
+          className="btn"
+          style={{ background: 'white', color: '#4f46e5', border: 'none', padding: '8px 15px', borderRadius: '20px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+        >
+          📹 Video Call
+        </button>
+      </div>
 
-        {/* Body */}
-        <div className="chat-body">
-          {chatHistory.map((m, index) => (
-            <div key={index} className={`message-bubble ${m.author === user.username ? 'msg-me' : 'msg-them'}`}>
-              <div>{m.message}</div>
-              <div style={{ fontSize: '0.7rem', opacity: 0.8, marginTop: '4px', textAlign: 'right' }}>{m.time}</div>
-            </div>
-          ))}
-          <div ref={bottomRef} />
-        </div>
+      {/* --- BODY (Scrollable Middle) --- */}
+      {/* flex: 1 makes this take up all available space, pushing input to bottom */}
+      <div className="chat-body" style={{ flex: 1, padding: '20px', overflowY: 'auto', background: '#f9fafb', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {messageList.map((msg, index) => {
+           const isMe = msg.author === user.username;
+           return (
+             <div key={index} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+               <div style={{ 
+                 maxWidth: '70%', 
+                 padding: '12px 16px', 
+                 borderRadius: '18px', 
+                 background: isMe ? '#4f46e5' : '#e5e7eb', 
+                 color: isMe ? 'white' : 'black',
+                 borderBottomRightRadius: isMe ? '4px' : '18px',
+                 borderBottomLeftRadius: isMe ? '18px' : '4px',
+                 position: 'relative'
+               }}>
+                 {/* Special Styling for Call Links */}
+                 {msg.type === 'call_invite' ? (
+                    <div>
+                        <p style={{margin: '0 0 5px 0', fontWeight: 'bold'}}>📞 Incoming Call</p>
+                        <button 
+                            onClick={() => navigate(msg.callLink)}
+                            style={{background: isMe ? 'white' : '#4f46e5', color: isMe ? '#4f46e5' : 'white', border:'none', padding:'5px 10px', borderRadius:'5px', cursor:'pointer'}}
+                        >
+                            Join Call
+                        </button>
+                    </div>
+                 ) : (
+                    <p style={{ margin: 0 }}>{msg.message}</p>
+                 )}
+                 <span style={{ fontSize: '0.65rem', opacity: 0.7, marginTop: '4px', display: 'block', textAlign: 'right' }}>{msg.time}</span>
+               </div>
+             </div>
+           );
+        })}
+        {/* Invisible div to scroll to */}
+        <div ref={scrollRef} />
+      </div>
 
-        {/* Footer */}
-        <form className="chat-footer" onSubmit={sendMessage}>
-          <input 
-            value={msg} 
-            onChange={(e) => setMsg(e.target.value)} 
-            placeholder="Type your message..." 
-            style={{flex:1, padding:'12px', borderRadius:'8px', border:'1px solid #e5e7eb', outline:'none'}}
-          />
-          <button type="submit" style={{background:'#10b981', color:'white', border:'none', padding:'0 20px', borderRadius:'8px', cursor:'pointer'}}>Send</button>
-        </form>
-
+      {/* --- FOOTER (Fixed at Bottom) --- */}
+      <div className="chat-footer" style={{ padding: '15px', borderTop: '1px solid #e5e7eb', background: 'white', display: 'flex', gap: '10px', flexShrink: 0 }}>
+        <input
+          type="text"
+          value={currentMessage}
+          placeholder="Type a message..."
+          onChange={(event) => setCurrentMessage(event.target.value)}
+          onKeyPress={handleKeyPress}
+          style={{ flex: 1, padding: '12px', borderRadius: '25px', border: '1px solid #d1d5db', outline: 'none' }}
+        />
+        <button onClick={sendMessage} style={{ background: '#4f46e5', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          ➤
+        </button>
       </div>
     </div>
   );
