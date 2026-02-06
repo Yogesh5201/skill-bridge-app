@@ -16,32 +16,34 @@ function Register({ setUser }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Clean up the skills/interests (turn "Java, HTML" into ["Java", "HTML"])
+      // Data preparation
       const dataToSend = {
         ...formData,
         skills: formData.skills.split(',').map(s => s.trim()),
         interests: formData.interests.split(',').map(s => s.trim())
       };
 
-      // Send to Backend
       const { data } = await API.post('/auth/register', dataToSend);
       
-      // If successful:
       alert("Registration Successful!");
       setUser(data);
       navigate('/dashboard');
       
     } catch (err) {
-      console.error(err);
+      console.error("Full Register Error:", err);
       
-      // --- THIS BLOCK FIXES THE "[object Object]" ERROR ---
-      // It looks inside the error object to find the actual text message
-      const errorMessage = 
-        err.response?.data?.message || 
-        err.message || 
-        "Registration Failed. Please try again.";
+      // --- DEBUGGING FIX ---
+      // This forces the hidden object to become readable text
+      let debugMessage = "Network Error";
       
-      alert(`Error: ${errorMessage}`);
+      if (err.response && err.response.data) {
+         // If the backend sent a message, show the RAW JSON structure
+         debugMessage = JSON.stringify(err.response.data);
+      } else if (err.message) {
+         debugMessage = err.message;
+      }
+
+      alert(`Debug Error: ${debugMessage}`);
     }
   };
 
