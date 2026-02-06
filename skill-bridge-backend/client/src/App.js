@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import './App.css'; 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import './App.css';
 
 // Import Components
 import Register from './components/Register';
@@ -14,10 +14,10 @@ import Messages from './components/Messages';
 import Schedule from './components/Schedule';
 import Profile from './components/Profile';
 
-// Initialize Socket
+// Initialize Socket Connection
 const socket = io.connect(
   process.env.NODE_ENV === 'production' 
-    ? 'https://skillbridge-backend.onrender.com' 
+    ? 'https://skill-bridge-app.onrender.com' // <--- REPLACE WITH YOUR RENDER URL
     : 'http://localhost:5000'
 );
 
@@ -27,7 +27,6 @@ function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Global Notifications
   useEffect(() => {
     if (user) {
       socket.emit("join_room", user._id); 
@@ -56,8 +55,6 @@ function App() {
     localStorage.setItem("skillBridgeUser", JSON.stringify(userData));
     setUser(userData);
   };
-
-  // REMOVED handleLogout HERE to fix the error
 
   return (
     <Router>

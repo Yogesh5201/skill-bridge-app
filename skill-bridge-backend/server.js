@@ -2,47 +2,78 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
-const { Server } = require("socket.io");
-const messageRoute = require('./routes/messages');
-const connectRoute = require('./routes/connect'); 
+const { Server } = require('socket.io');
+require('dotenv').config();
 
-// NEW IMPORTS
-const sessionRoute = require('./routes/session');
-const userRoute = require('./routes/users');
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const sessionRoutes = require('./routes/session');
 
 const app = express();
-const server = http.createServer(app); 
+const server = http.createServer(app);
 
-// Middleware
-app.use(cors());
+// --- CORS CONFIGURATION (CRITICAL) ---
+// Add your Vercel URL to this list
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://skill-bridge-app.vercel.app" // <--- REPLACE WITH YOUR VERCEL URL
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
 app.use(express.json());
 
-// DB Connection
-mongoose.connect('mongodb+srv://admin:yjzm12345@cluster0.mf1tjm7.mongodb.net/?appName=Cluster0') // REPLACE WITH YOUR URL
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.log("❌ DB Connection Error:", err));
+// --- DATABASE CONNECTION ---
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log("✅ MongoDB Connected"))
+.catch(err => console.error("❌ MongoDB Error:", err));
 
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/match', require('./routes/match'));
-app.use('/api/connect', connectRoute);
-app.use('/api/messages', messageRoute);
+// --- ROUTES ---
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/sessions', sessionRoutes);
 
-// NEW ROUTES
-app.use('/api/session', sessionRoute);
-app.use('/api/users', userRoute);
-
-// Socket.io Setup
+// --- SOCKET.IO ---
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] } // Allow all origins for deployment
+  cors: {
+    origin: allowedOrigins, // Use the same allowed origins list
+    methods: ["GET", "POST"]
+  }
 });
 
 io.on("connection", (socket) => {
   console.log(`User Connected: ${socket.id}`);
-  socket.on("join_room", (room_id) => { socket.join(room_id); });
-  socket.on("send_message", (data) => { socket.to(data.room).emit("receive_message", data); });
-  socket.on("disconnect", () => { console.log("User Disconnected", socket.id); });
+
+  socket.on("join_room", (room) => {
+    socket.join(room);
+    console.log(`User with ID: ${socket.id} joined room: ${room}`);
+  });
+
+  socket.on("send_message", (data) => {
+    socket.to(data.room).emit("receive_message", data);
+  });
+
+  socket.on("send_session_request", (data) => {
+    // Notify the specific user (receiverId)
+    io.to(data.receiverId).emit("session_notification", {
+      senderName: data.senderName,
+      message: "New session request!"
+    });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User Disconnected", socket.id);
+  });
 });
 
-const PORT = process.env.PORT || 5000; // Use Render's port or 5000
-server.listen(PORT, () => { console.log(`🚀 Server running on port ${PORT}`); });
+// --- SERVER START ---
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
