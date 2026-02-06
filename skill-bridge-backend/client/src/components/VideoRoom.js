@@ -8,8 +8,8 @@ function VideoRoom() {
 
   const myMeeting = async (element) => {
     // 1. GENERATE TOKEN (Using Test Credentials)
-    const appID = 1484647939; 
-    const serverSecret = "4988709503460875704771234567890"; 
+    const appID = 145248292; 
+    const serverSecret = "b7fd5cdd7792e5fc96b582ca4fc7b7fa"; 
     
     const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
       appID, 
