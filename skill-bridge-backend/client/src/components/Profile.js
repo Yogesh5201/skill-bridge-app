@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 
+// REMOVED import API HERE to fix the error
+
 function Profile({ user }) {
   const [formData, setFormData] = useState({
     gender: user.gender || 'Other',
@@ -9,8 +11,6 @@ function Profile({ user }) {
   });
 
   const handleSave = async () => {
-    // In a real app, you'd call API.put here.
-    // Since we aren't using the API variable yet, we just alert.
     alert("Profile Updated! (Backend update route required for persistence)");
   };
 

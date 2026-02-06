@@ -56,6 +56,8 @@ function App() {
     setUser(userData);
   };
 
+  // REMOVED handleLogout HERE to fix the error
+
   return (
     <Router>
       <div className="app-container">
