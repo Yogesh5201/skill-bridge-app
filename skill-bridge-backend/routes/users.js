@@ -1,20 +1,26 @@
-const router = require('express').Router();
+const express = require('express');
+const router = express.Router();
 const User = require('../models/User');
 
-// Rate a User
-router.post('/rate', async (req, res) => {
+// GET /api/users - Get ALL Users
+router.get('/', async (req, res) => {
   try {
-    const { userId, stars } = req.body;
-    const user = await User.findById(userId);
-    
-    // Calculate new weighted average
-    const totalScore = (user.rating * user.ratingCount) + Number(stars);
-    user.ratingCount += 1;
-    user.rating = totalScore / user.ratingCount;
-    
-    await user.save();
+    const users = await User.find().select('-password'); // Don't send passwords!
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/users/:id - Get ONE User
+router.get('/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
-  } catch (err) { res.status(500).json(err); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;
