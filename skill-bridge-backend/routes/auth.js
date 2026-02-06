@@ -1,52 +1,70 @@
-// routes/auth.js
-const router = require('express').Router();
-const User = require('../models/User');
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User'); 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// 1. REGISTER USER
+// --- REGISTER ROUTE (Fixed) ---
 router.post('/register', async (req, res) => {
   try {
-    // Check if user already exists
-    const userExists = await User.findOne({ email: req.body.email });
-    if (userExists) return res.status(400).send("Email already exists");
+    console.log("📥 Register Request Body:", req.body); // This will show up in Render Logs
 
-    // Hash the password (Security)
+    const { email, username, password, gender, category, skills, interests } = req.body;
+
+    // 1. Check for duplicates
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    if (existingUser) {
+      return res.status(400).json({ message: "User with this Email or Username already exists" });
+    }
+
+    // 2. Hash Password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user
+    // 3. Create User (Standardizing Field Names)
+    // We check for 'skills' OR 'skillsOffered' to prevent errors
     const newUser = new User({
-      username: req.body.username,
-      email: req.body.email,
+      username,
+      email,
       password: hashedPassword,
-      skillsOffered: req.body.skillsOffered, // Array expected ["Java", "Math"]
-      skillsWanted: req.body.skillsWanted    // Array expected ["Guitar"]
+      gender: gender || 'Other',
+      category: category || 'Tech',
+      role: 'Member',
+      // Map Frontend 'skills' -> Database 'skillsOffered'
+      skillsOffered: skills || req.body.skillsOffered || [],
+      // Map Frontend 'interests' -> Database 'skillsWanted'
+      skillsWanted: interests || req.body.skillsWanted || []
     });
 
     const savedUser = await newUser.save();
-    res.send({ user: savedUser._id });
+    
+    // 4. Generate Token
+    const token = jwt.sign({ id: savedUser._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
+
+    console.log("✅ User Registered Successfully:", savedUser.username);
+    res.status(201).json({ token, ...savedUser._doc });
+
   } catch (err) {
-    res.status(400).send(err);
+    console.error("❌ Register Error:", err);
+    // Send the ACTUAL error message to the frontend
+    res.status(400).json({ message: err.message || "Registration failed" });
   }
 });
 
-// 2. LOGIN USER
+// --- LOGIN ROUTE ---
 router.post('/login', async (req, res) => {
   try {
-    // Check if user exists
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) return res.status(400).send("Email not found");
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Check password
-    const validPass = await bcrypt.compare(req.body.password, user.password);
-    if (!validPass) return res.status(400).send("Invalid password");
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Create and assign a token
-    const token = jwt.sign({ _id: user._id }, "SUPER_SECRET_KEY");
-    res.header('auth-token', token).send({ token: token, user: user });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
+    res.status(200).json({ token, ...user._doc });
   } catch (err) {
-    res.status(400).send(err);
+    res.status(500).json({ message: err.message });
   }
 });
 
